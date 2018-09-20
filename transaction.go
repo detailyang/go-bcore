@@ -73,6 +73,35 @@ func (to *TransactionOutput) Bytes() []byte {
 		Bytes()
 }
 
+func NewTransactionFromBytes(data []byte) (*Transaction, error) {
+	transaction := &Transaction{}
+	buffer := NewReadBuffer(data)
+
+	version, err := buffer.GetUint32()
+	if err != nil {
+		return nil, err
+	}
+
+	ninputs, err := buffer.GetVarInt()
+	if err != nil {
+		return nil, err
+	}
+
+	inputs := make([]*TransactionInput, ninputs)
+	for i := 0; i < int(ninputs); i++ {
+		input, err := NewTransactionFromBytes
+	}
+
+	noutputs, err := buffer.GetVarInt()
+	if err != nil {
+		return nil, err
+	}
+	// PrevOutput    OutPoint
+	// ScriptSig     []byte
+	// Sequence      uint32
+	// ScriptWitness [][]byte
+}
+
 func (t *Transaction) IsEmpty() bool {
 	return len(t.Inputs) == 0 || len(t.Outputs) == 0
 }

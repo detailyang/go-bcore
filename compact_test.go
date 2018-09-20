@@ -53,10 +53,6 @@ func TestNewCompactFromBytes(t *testing.T) {
 			[]byte{1},
 			65536,
 		},
-		// {
-		// 	[]byte{0x92, 0x34, 0x00, 0x00},
-		// 	0x05009234,
-		// },
 	}
 
 	for _, test := range tests {

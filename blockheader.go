@@ -33,7 +33,7 @@ func NewBlockHeaderFromHexString(hexstring string) (*BlockHeader, error) {
 }
 
 func NewBlockHeaderFromBytes(data []byte) (*BlockHeader, error) {
-	if len(data) != 80 {
+	if len(data) != BlockHeaderSize {
 		return nil, ErrBlockHeaderWrongSize
 	}
 

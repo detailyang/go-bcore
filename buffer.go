@@ -2,6 +2,11 @@ package bcore
 
 import (
 	"encoding/binary"
+	"errors"
+)
+
+var (
+	ErrBufferOverflow = errors.New("buffer: try to take more")
 )
 
 const (
@@ -28,6 +33,10 @@ func NewBuffer() *Buffer {
 	}
 }
 
+func (b *Buffer) CheckSize(n int) bool {
+	return b.pos+l > len(b.data)
+}
+
 func (b *Buffer) PutUint8(u8 uint8) *Buffer {
 	b.data = append(b.data, u8)
 	b.pos += 1
@@ -40,6 +49,17 @@ func (b *Buffer) Uint8(u8 *uint8) *Buffer {
 	return b
 }
 
+func (b *Buffer) GetUint8() (uint8, error) {
+	if !b.CheckSize(1) {
+		return 0, ErrBufferOverflow
+	}
+
+	u8 := uint8(b.data[b.pos])
+	b.pos += 1
+
+	return u8, nil
+}
+
 func (b *Buffer) PutUint16(u16 uint16) *Buffer {
 	b.data = append(b.data, byte(u16), byte(u16)>>8)
 	b.pos += 2
@@ -50,6 +70,17 @@ func (b *Buffer) Uint16(u16 *uint16) *Buffer {
 	*u16 = binary.LittleEndian.Uint16(b.data[b.pos:])
 	b.pos += 2
 	return b
+}
+
+func (b *Buffer) GetUint16() (uint16, error) {
+	if !b.CheckSize(2) {
+		return 0, ErrBufferOverflow
+	}
+
+	u16 := binary.LittleEndian.Uint16(b.data[b.pos:])
+	b.pos += 2
+
+	return u16, nil
 }
 
 func (b *Buffer) PutCompact(c Compact) *Buffer {
@@ -78,6 +109,16 @@ func (b *Buffer) Uint32(u32 *uint32) *Buffer {
 	return b
 }
 
+func (b *Buffer) GetUint32() (uint32, error) {
+	if !b.CheckSize(4) {
+		return 0, ErrBufferOverflow
+	}
+
+	u32 := binary.LittleEndian.Uint32(b.data[b.pos:])
+	b.pos += 4
+	return u32, nil
+}
+
 func (b *Buffer) PutUint64(u64 uint64) *Buffer {
 	b.data = append(b.data, byte(u64), byte(u64>>8), byte(u64>>16), byte(u64>>24),
 		byte(u64>>32), byte(u64>>40), byte(u64>>48), byte(u64>>56))
@@ -89,6 +130,17 @@ func (b *Buffer) Uint64(u64 *uint64) *Buffer {
 	*u64 = binary.LittleEndian.Uint64(b.data[b.pos:])
 	b.pos += 8
 	return b
+}
+
+func (b *Buffer) GetUint64() uint64 {
+	if !b.CheckSize(8) {
+		return 0, ErrBufferOverflow
+	}
+
+	u64 := binary.LittleEndian.Uint64(b.data[b.pos:])
+	b.pos += 8
+
+	return u64, nil
 }
 
 func (b *Buffer) PutHash(hash Hash) *Buffer {
@@ -117,6 +169,39 @@ func (b *Buffer) PutVarInt(n uint64) *Buffer {
 	}
 
 	return b
+}
+
+func (b *Buffer) GetVarInt() (uint64, error) {
+	var v uint64
+
+	first, err := b.GetUint8()
+	if err != nil {
+		return 0, err
+	}
+
+	switch first {
+	case 0xfd:
+		v1, err := b.GetUint16()
+		if err != nil {
+			return 0, err
+		}
+		v = uint64(v1)
+	case 0xfe:
+		v1, err := b.GetUint32()
+		if err != nil {
+			return 0, err
+		}
+		v = uint64(v1)
+	case 0xff:
+		v, err := b.GetUint64()
+		if err != nil {
+			return 0, err
+		}
+	default:
+		v = uint64(first)
+	}
+
+	return v, nil
 }
 
 func (b *Buffer) PutBytes(bytes []byte) *Buffer {

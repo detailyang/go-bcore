@@ -1,1 +1,3 @@
 package bcore
+
+func NewTransactionFromBytes()
