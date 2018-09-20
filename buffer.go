@@ -132,7 +132,7 @@ func (b *Buffer) Uint64(u64 *uint64) *Buffer {
 	return b
 }
 
-func (b *Buffer) GetUint64() uint64 {
+func (b *Buffer) GetUint64() (uint64, error) {
 	if !b.CheckSize(8) {
 		return 0, ErrBufferOverflow
 	}
@@ -208,6 +208,33 @@ func (b *Buffer) PutBytes(bytes []byte) *Buffer {
 	b.data = append(b.data, bytes...)
 	b.pos += len(bytes)
 	return b
+}
+
+func (b *Buffer) GetBytes(n int) ([]byte, error) {
+	if !b.CheckSize(n) {
+		return nil, ErrBufferOverflow
+	}
+
+	data := b.data[b.pos : b.pos+n]
+	b.pos += n
+
+	return data, nil
+}
+
+func (b *Buffer) PutVarBytes(bytes []byte) *Buffer {
+	b.PutVarInt(uint64(len(bytes)))
+	b.data = append(b.data, bytes...)
+	b.pos += len(bytes)
+	return b
+}
+
+func (b *Buffer) GetVarBytes() ([]byte, error) {
+	n, err := b.GetVarInt()
+	if err != nil {
+		return nil, err
+	}
+
+	return b.GetBytes(int(n))
 }
 
 func (b *Buffer) Size() int {
