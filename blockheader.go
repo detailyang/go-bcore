@@ -1,6 +1,7 @@
 package bcore
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 )
@@ -18,7 +19,7 @@ type BlockHeader struct {
 	PrevHash   Hash
 	MerkleRoot Hash
 	Time       uint32
-	Bits       uint32
+	Bits       Compact
 	Nonce      uint32
 }
 
@@ -42,10 +43,14 @@ func NewBlockHeaderFromBytes(data []byte) (*BlockHeader, error) {
 		Hash(&bh.PrevHash).
 		Hash(&bh.MerkleRoot).
 		Uint32(&bh.Time).
-		Uint32(&bh.Bits).
+		Compact(&bh.Bits).
 		Uint32(&bh.Nonce)
 
 	return &bh, nil
+}
+
+func (bh *BlockHeader) Equal(tbh *BlockHeader) bool {
+	return bytes.Equal(bh.Bytes(), tbh.Bytes())
 }
 
 func (bh *BlockHeader) Hash() Hash {
@@ -58,12 +63,12 @@ func (bh *BlockHeader) Bytes() []byte {
 		PutHash(bh.PrevHash).
 		PutHash(bh.MerkleRoot).
 		PutUint32(bh.Time).
-		PutUint32(bh.Bits).
+		PutCompact(bh.Bits).
 		PutUint32(bh.Nonce).
 		Bytes()
 }
 
-func (bh *BlockHeader) Strin() string {
+func (bh *BlockHeader) String() string {
 	return NewFormatter("\n").
 		PutField("version", bh.Version).
 		PutField("prevhash", bh.PrevHash).

@@ -33,6 +33,7 @@ func (b *Buffer) PutUint8(u8 uint8) *Buffer {
 	b.pos += 1
 	return b
 }
+
 func (b *Buffer) Uint8(u8 *uint8) *Buffer {
 	*u8 = b.data[b.pos]
 	b.pos += 1
@@ -40,7 +41,7 @@ func (b *Buffer) Uint8(u8 *uint8) *Buffer {
 }
 
 func (b *Buffer) PutUint16(u16 uint16) *Buffer {
-	binary.LittleEndian.PutUint16(b.data, u16)
+	b.data = append(b.data, byte(u16), byte(u16)>>8)
 	b.pos += 2
 	return b
 }
@@ -51,8 +52,22 @@ func (b *Buffer) Uint16(u16 *uint16) *Buffer {
 	return b
 }
 
+func (b *Buffer) PutCompact(c Compact) *Buffer {
+	u32 := c.Uint32()
+	b.data = append(b.data, byte(u32), byte(u32>>8), byte(u32>>16), byte(u32>>24))
+	b.pos += 4
+	return b
+}
+
+func (b *Buffer) Compact(c *Compact) *Buffer {
+	u32 := binary.LittleEndian.Uint32(b.data[b.pos:])
+	b.pos += 4
+	c.SetUint32(u32)
+	return b
+}
+
 func (b *Buffer) PutUint32(u32 uint32) *Buffer {
-	binary.LittleEndian.PutUint32(b.data, u32)
+	b.data = append(b.data, byte(u32), byte(u32>>8), byte(u32>>16), byte(u32>>24))
 	b.pos += 4
 	return b
 }
@@ -64,7 +79,8 @@ func (b *Buffer) Uint32(u32 *uint32) *Buffer {
 }
 
 func (b *Buffer) PutUint64(u64 uint64) *Buffer {
-	binary.LittleEndian.PutUint64(b.data, u64)
+	b.data = append(b.data, byte(u64), byte(u64>>8), byte(u64>>16), byte(u64>>24),
+		byte(u64>>32), byte(u64>>40), byte(u64>>48), byte(u64>>56))
 	b.pos += 8
 	return b
 }
