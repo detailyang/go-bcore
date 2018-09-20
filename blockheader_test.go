@@ -65,3 +65,29 @@ func TestBlockHeaderBytes(t *testing.T) {
 		t.Fatalf("expected:%v got:%v", stream, bh.Bytes())
 	}
 }
+
+func TestBlockHeaderString(t *testing.T) {
+	bh := &BlockHeader{
+		Version: 1,
+		PrevHash: Hash{
+			2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+		},
+		MerkleRoot: Hash{
+			3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+		},
+		Time:  4,
+		Bits:  NewCompact(5),
+		Nonce: 6,
+	}
+
+	expect := `version   :1
+prevhash  :0202020202020202020202020202020202020202020202020202020202020202
+merkleroot:0303030303030303030303030303030303030303030303030303030303030303
+time      :4
+bits      :5
+nonce     :6`
+
+	if bh.String() != expect {
+		t.Errorf("expect \n%s got \n%s", expect, bh.String())
+	}
+}

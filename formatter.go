@@ -6,12 +6,13 @@ import (
 )
 
 type Formatter struct {
-	s   []string
-	sep string
+	s     []string
+	sep   string
+	width int
 }
 
-func NewFormatter(sep string) *Formatter {
-	return &Formatter{sep: sep}
+func NewFormatter(sep string, width int) *Formatter {
+	return &Formatter{sep: sep, width: width}
 }
 
 func (f *Formatter) PutField(field string, value interface{}) *Formatter {
@@ -19,9 +20,11 @@ func (f *Formatter) PutField(field string, value interface{}) *Formatter {
 
 	switch value.(type) {
 	case uint32:
-		text = fmt.Sprintf("%s:%d", field, value)
+		text = fmt.Sprintf("%-*s:%d", f.width, field, value)
 	case Hash:
-		text = fmt.Sprintf("%s:%s", field, value)
+		text = fmt.Sprintf("%-*s:%s", f.width, field, value)
+	case Compact:
+		text = fmt.Sprintf("%-*s:%d", f.width, field, value)
 	default:
 		panic("don't implement ")
 	}

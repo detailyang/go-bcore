@@ -69,7 +69,7 @@ func (bh *BlockHeader) Bytes() []byte {
 }
 
 func (bh *BlockHeader) String() string {
-	return NewFormatter("\n").
+	return NewFormatter("\n", 10).
 		PutField("version", bh.Version).
 		PutField("prevhash", bh.PrevHash).
 		PutField("merkleroot", bh.MerkleRoot).
