@@ -1,6 +1,7 @@
 package bcore
 
 import (
+	"encoding/hex"
 	"errors"
 	"math"
 )
@@ -20,8 +21,8 @@ const (
 
 type Transaction struct {
 	Version  uint32
-	Inputs   []TransactionInput
-	Outputs  []TransactionOutput
+	Inputs   []*TransactionInput
+	Outputs  []*TransactionOutput
 	Locktime uint32
 }
 
@@ -35,6 +36,11 @@ type TransactionInput struct {
 	ScriptSig     []byte
 	Sequence      uint32
 	ScriptWitness ScriptWitness
+}
+
+type TransactionOutput struct {
+	Value        uint64
+	ScriptPubkey []byte
 }
 
 type ScriptWitness [][]byte
@@ -54,11 +60,6 @@ func (s ScriptWitness) Bytes() []byte {
 	}
 
 	return buffer.Bytes()
-}
-
-type TransactionOutput struct {
-	Value        uint64
-	ScriptPubkey []byte
 }
 
 func NewOutPoint() *OutPoint {
@@ -93,9 +94,7 @@ func (o OutPoint) Bytes() []byte {
 		Bytes()
 }
 
-func NewTransactionInputFromBytes(data []byte) (*TransactionInput, error) {
-	buffer := NewReadBuffer(data)
-
+func NewTransactionInputFromBuffer(buffer *Buffer) (*TransactionInput, error) {
 	data, err := buffer.GetBytes(TransactionOutPointSize)
 	if err != nil {
 		return nil, err
@@ -124,6 +123,11 @@ func NewTransactionInputFromBytes(data []byte) (*TransactionInput, error) {
 	}, nil
 }
 
+func NewTransactionInputFromBytes(data []byte) (*TransactionInput, error) {
+	buffer := NewReadBuffer(data)
+	return NewTransactionInputFromBuffer(buffer)
+}
+
 func (ti *TransactionInput) IsFinal() bool {
 	return ti.Sequence == TransactionFinalSequence
 }
@@ -140,11 +144,37 @@ func (ti *TransactionInput) Bytes() []byte {
 		Bytes()
 }
 
+func NewTransactionOutputFromBuffer(buffer *Buffer) (*TransactionOutput, error) {
+	value, err := buffer.GetUint64()
+	if err != nil {
+		return nil, err
+	}
+
+	scriptPubkey, err := buffer.GetVarBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	return &TransactionOutput{
+		Value:        value,
+		ScriptPubkey: scriptPubkey,
+	}, nil
+}
+
 func (to *TransactionOutput) Bytes() []byte {
 	return NewBuffer().
 		PutUint64(to.Value).
-		PutBytes(to.ScriptPubkey).
+		PutVarBytes(to.ScriptPubkey).
 		Bytes()
+}
+
+func NewTransactionFromHexString(hexstring string) (*Transaction, error) {
+	b, err := hex.DecodeString(hexstring)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewTransactionFromBytes(b)
 }
 
 func NewTransactionFromBytes(data []byte) (*Transaction, error) {
@@ -162,19 +192,38 @@ func NewTransactionFromBytes(data []byte) (*Transaction, error) {
 
 	inputs := make([]*TransactionInput, ninputs)
 	for i := 0; i < int(ninputs); i++ {
-		// input, err := NewTransactionInputFromBytes()
+		input, err := NewTransactionInputFromBuffer(buffer)
+		if err != nil {
+			return nil, err
+		}
+		inputs[i] = input
 	}
 
 	noutputs, err := buffer.GetVarInt()
 	if err != nil {
 		return nil, err
 	}
-	// PrevOutput    OutPoint
-	// ScriptSig     []byte
-	// Sequence      uint32
-	// ScriptWitness [][]byte
 
-	return nil, nil
+	outputs := make([]*TransactionOutput, noutputs)
+	for i := 0; i < int(noutputs); i++ {
+		output, err := NewTransactionOutputFromBuffer(buffer)
+		if err != nil {
+			return nil, err
+		}
+		outputs[i] = output
+	}
+
+	locktime, err := buffer.GetUint32()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Transaction{
+		Version:  version,
+		Inputs:   inputs,
+		Outputs:  outputs,
+		Locktime: locktime,
+	}, nil
 }
 
 func (t *Transaction) IsEmpty() bool {

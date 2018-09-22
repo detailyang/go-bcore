@@ -33,8 +33,8 @@ func NewBuffer() *Buffer {
 	}
 }
 
-func (b *Buffer) CheckSize(n int) bool {
-	return b.pos+l > len(b.data)
+func (b *Buffer) HasSize(n int) bool {
+	return b.pos+n <= len(b.data)
 }
 
 func (b *Buffer) PutUint8(u8 uint8) *Buffer {
@@ -50,7 +50,7 @@ func (b *Buffer) Uint8(u8 *uint8) *Buffer {
 }
 
 func (b *Buffer) GetUint8() (uint8, error) {
-	if !b.CheckSize(1) {
+	if !b.HasSize(1) {
 		return 0, ErrBufferOverflow
 	}
 
@@ -73,7 +73,7 @@ func (b *Buffer) Uint16(u16 *uint16) *Buffer {
 }
 
 func (b *Buffer) GetUint16() (uint16, error) {
-	if !b.CheckSize(2) {
+	if !b.HasSize(2) {
 		return 0, ErrBufferOverflow
 	}
 
@@ -110,7 +110,7 @@ func (b *Buffer) Uint32(u32 *uint32) *Buffer {
 }
 
 func (b *Buffer) GetUint32() (uint32, error) {
-	if !b.CheckSize(4) {
+	if !b.HasSize(4) {
 		return 0, ErrBufferOverflow
 	}
 
@@ -133,7 +133,7 @@ func (b *Buffer) Uint64(u64 *uint64) *Buffer {
 }
 
 func (b *Buffer) GetUint64() (uint64, error) {
-	if !b.CheckSize(8) {
+	if !b.HasSize(8) {
 		return 0, ErrBufferOverflow
 	}
 
@@ -172,36 +172,36 @@ func (b *Buffer) PutVarInt(n uint64) *Buffer {
 }
 
 func (b *Buffer) GetVarInt() (uint64, error) {
-	var v uint64
+	var u64 uint64
 
-	first, err := b.GetUint8()
+	u8, err := b.GetUint8()
 	if err != nil {
 		return 0, err
 	}
 
-	switch first {
+	switch u8 {
 	case 0xfd:
-		v1, err := b.GetUint16()
+		u16, err := b.GetUint16()
 		if err != nil {
 			return 0, err
 		}
-		v = uint64(v1)
+		u64 = uint64(u16)
 	case 0xfe:
-		v1, err := b.GetUint32()
+		u32, err := b.GetUint32()
 		if err != nil {
 			return 0, err
 		}
-		v = uint64(v1)
+		u64 = uint64(u32)
 	case 0xff:
-		v, err := b.GetUint64()
+		u64, err = b.GetUint64()
 		if err != nil {
 			return 0, err
 		}
 	default:
-		v = uint64(first)
+		u64 = uint64(u8)
 	}
 
-	return v, nil
+	return u64, nil
 }
 
 func (b *Buffer) PutBytes(bytes []byte) *Buffer {
@@ -211,7 +211,7 @@ func (b *Buffer) PutBytes(bytes []byte) *Buffer {
 }
 
 func (b *Buffer) GetBytes(n int) ([]byte, error) {
-	if !b.CheckSize(n) {
+	if !b.HasSize(n) {
 		return nil, ErrBufferOverflow
 	}
 

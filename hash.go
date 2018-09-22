@@ -9,10 +9,16 @@ import (
 const HashSize = 32
 
 var (
-	HashZero = Hash{0x0000000000000000000000000000000000000000000000000000000000000000}
+	HashZero = Hash{0x00}
 )
 
 type Hash [HashSize]byte
+
+func NewHash(b []byte) Hash {
+	var hash Hash
+	hash.SetBytes(b)
+	return hash
+}
 
 func (h *Hash) SetBytes(b []byte) {
 	if len(b) > len(h) {
@@ -42,13 +48,24 @@ func (h Hash) String() string {
 	return h.Hex()
 }
 
-func DHash256(data []byte) Hash {
-	var hash Hash
+func (h Hash) Reverse() Hash {
+	for i, j := 0, len(h)-1; i < j; i, j = i+1, j-1 {
+		h[i], h[j] = h[j], h[i]
+	}
+	return h
+}
 
+func (h Hash) RString() string {
+	return h.Reverse().Hex()
+}
+
+func Hash256(data []byte) Hash {
 	h := sha256.New()
 	h.Write(data)
-	h.Write(h.Sum(nil))
-	hash.SetBytes(h.Sum(nil))
+	hash := h.Sum(nil)
+	return NewHash(hash)
+}
 
-	return hash
+func DHash256(data []byte) Hash {
+	return Hash256(Hash256(data).Bytes())
 }
