@@ -21,10 +21,10 @@ package bcore
 import "errors"
 
 const (
-	TransactionCheckerLocktimeThreshold = 500000000
-	// TransactionCheckerLocktimeSequenceFinal Setting nSequence to this value for every input in a transaction
+	TransactionSignerLocktimeThreshold = 500000000
+	// TransactionSignerLocktimeSequenceFinal Setting nSequence to this value for every input in a transaction
 	// disables nLockTime.
-	TransactionCheckerLocktimeSequenceFinal = 0xffffffff
+	TransactionSignerLocktimeSequenceFinal = 0xffffffff
 
 	// TransactionSequenceLocktimeDisableFlag apply in the context of BIP 68
 	// If this flag set, sequence is NOT interpreted as a
@@ -41,20 +41,21 @@ const (
 )
 
 var (
-	ErrTransactionCheckerLockTimeThreshold     = errors.New("transaction checker: locktime < threshold")
-	ErrTransactionCheckerLockTimeNotArrived    = errors.New("transaction checker: locktime has not arrived")
-	ErrTransactionCheckerLocktimeSequenceFinal = errors.New("transaction checker: final sequence")
-	ErrTransactionCheckerSequenceLowVersion    = errors.New("transaction checker: transaction version below 2")
-	ErrTransactionCheckerSequenceDisabled      = errors.New("transaction checker: sequence disabled")
-	ErrTransactionCheckerSequenceThresold      = errors.New("transaction checker: sequence < threshold")
+	ErrTransactionSignerLockTimeThreshold     = errors.New("transaction signer: locktime < threshold")
+	ErrTransactionSignerLockTimeNotArrived    = errors.New("transaction signer: locktime has not arrived")
+	ErrTransactionSignerLocktimeSequenceFinal = errors.New("transaction signer: final sequence")
+	ErrTransactionSignerSequenceLowVersion    = errors.New("transaction signer: transaction version below 2")
+	ErrTransactionSignerSequenceDisabled      = errors.New("transaction signer: sequence disabled")
+	ErrTransactionSignerSequenceThresold      = errors.New("transaction signer: sequence < threshold")
+	ErrTransactionSignerSequenceNotArrived    = errors.New("transaction signer: tosequnce < sequence")
 )
 
-type TransactionChecker struct {
+type TransactionSigner struct {
 	Transaction *Transaction
 	InputIndex  int
 }
 
-func (ck *TransactionChecker) CheckLockTime(locktime uint32) error {
+func (ts *TransactionSigner) CheckLockTime(locktime uint32) error {
 	// There are two kinds of nLockTime: lock-by-blockheight
 	// and lock-by-blocktime, distinguished by whether
 	// nLockTime < LOCKTIME_THRESHOLD.
@@ -63,38 +64,38 @@ func (ck *TransactionChecker) CheckLockTime(locktime uint32) error {
 	// unless the type of nLockTime being tested is the same as
 	// the nLockTime in the transaction.
 
-	if !((ck.Transaction.Locktime < TransactionCheckerLocktimeThreshold &&
-		locktime < TransactionCheckerLocktimeThreshold) ||
-		(ck.Transaction.Locktime >= TransactionCheckerLocktimeThreshold &&
-			locktime >= TransactionCheckerLocktimeThreshold)) {
-		return ErrTransactionCheckerLockTimeThreshold
+	if !((ts.Transaction.Locktime < TransactionSignerLocktimeThreshold &&
+		locktime < TransactionSignerLocktimeThreshold) ||
+		(ts.Transaction.Locktime >= TransactionSignerLocktimeThreshold &&
+			locktime >= TransactionSignerLocktimeThreshold)) {
+		return ErrTransactionSignerLockTimeThreshold
 	}
 
-	if locktime > ck.Transaction.Locktime {
-		return ErrTransactionCheckerLockTimeNotArrived
+	if locktime > ts.Transaction.Locktime {
+		return ErrTransactionSignerLockTimeNotArrived
 	}
 
-	if TransactionFinalSequence != ck.Transaction.Inputs[ck.InputIndex].Sequence {
-		return ErrTransactionCheckerLocktimeSequenceFinal
+	if TransactionFinalSequence != ts.Transaction.Inputs[ts.InputIndex].Sequence {
+		return ErrTransactionSignerLocktimeSequenceFinal
 	}
 
 	return nil
 }
 
-func (ck *TransactionChecker) CheckSequence(sequence uint32) error {
+func (ts *TransactionSigner) CheckSequence(sequence uint32) error {
 	// Fail if the transaction's version number is not set high
 	// enough to trigger BIP 68 rules.
-	if ck.Transaction.Version < 2 {
-		return ErrTransactionCheckerSequenceLowVersion
+	if ts.Transaction.Version < 2 {
+		return ErrTransactionSignerSequenceLowVersion
 	}
 
-	if ck.Transaction.Inputs[ck.InputIndex].Sequence&TransactionSequenceLocktimeDisableFlag ==
+	if ts.Transaction.Inputs[ts.InputIndex].Sequence&TransactionSequenceLocktimeDisableFlag ==
 		TransactionSequenceLocktimeDisableFlag {
-		return ErrTransactionCheckerSequenceDisabled
+		return ErrTransactionSignerSequenceDisabled
 	}
 
 	locktimeMask := TransactionSequenceLockTimeTypeFlag | TransactionSequenceLocktimeMask
-	tsequence := ck.Transaction.Inputs[ck.InputIndex].Sequence & locktimeMask
+	tsequence := ts.Transaction.Inputs[ts.InputIndex].Sequence & locktimeMask
 	sequence = sequence & locktimeMask
 
 	// There are two kinds of nSequence: lock-by-blockheight
@@ -106,12 +107,16 @@ func (ck *TransactionChecker) CheckSequence(sequence uint32) error {
 	// the nSequenceMasked in the transaction.
 	if !((tsequence < TransactionSequenceLockTimeTypeFlag && locktimeMask < TransactionSequenceLockTimeTypeFlag) ||
 		(tsequence >= TransactionSequenceLockTimeTypeFlag && locktimeMask >= TransactionSequenceLockTimeTypeFlag)) {
-		return ErrTransactionCheckerSequenceThresold
+		return ErrTransactionSignerSequenceThresold
 	}
 
 	if tsequence < sequence {
-
+		return ErrTransactionSignerSequenceNotArrived
 	}
 
 	return nil
+}
+
+func (ts *TransactionSigner) CheckSignature(sig, pubkey []byte, script *Script, version SignatureVersion) error {
+
 }
