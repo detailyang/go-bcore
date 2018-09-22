@@ -64,5 +64,68 @@ func TestTransactionHash(t *testing.T) {
 }
 
 func TestTransactionWithWitness(t *testing.T) {
+	b := "01000000000102fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f00000000494830450221008b9d1dc26ba6a9cb62127b02742fa9d754cd3bebf337f7a55d114c8e5cdd30be022040529b194ba3f9281a99f2b1c0a19c0489bc22ede944ccf4ecbab4cc618ef3ed01eeffffffef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a0100000000ffffffff02202cb206000000001976a9148280b37df378db99f66f85c95a783a76ac7a6d5988ac9093510d000000001976a9143bde42dbee7e4dbe6a21b2d50ce2f0167faa815988ac000247304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee0121025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee635711000000"
+	tx, err := NewTransactionWitnessFromHexString(b)
+	if err != nil {
+		t.Fatal(err)
+	}
 
+	if tx.Version != 1 {
+		t.Fatalf("version: expect 1, got %d", tx.Version)
+	}
+
+	if len(tx.Inputs) != 2 {
+		t.Fatalf("inputs len: expect 2, got %d", len(tx.Inputs))
+	}
+
+	in1 := tx.Inputs[0]
+	if in1.PrevOutput.Hash.String() != "fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f" {
+		t.Fatalf("inputs[0] prevoutpoint: got %s", "fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f")
+	}
+
+	if in1.PrevOutput.Index != 0 {
+		t.Fatalf("inputs[0] index: got %d", in1.PrevOutput.Index)
+	}
+
+	if hex.EncodeToString(in1.ScriptSig) != "4830450221008b9d1dc26ba6a9cb62127b02742fa9d754cd3bebf337f7a55d114c8e5cdd30be022040529b194ba3f9281a99f2b1c0a19c0489bc22ede944ccf4ecbab4cc618ef3ed01" {
+		t.Fatalf("inputs[0] hex: got %s", "4830450221008b9d1dc26ba6a9cb62127b02742fa9d754cd3bebf337f7a55d114c8e5cdd30be022040529b194ba3f9281a99f2b1c0a19c0489bc22ede944ccf4ecbab4cc618ef3ed01")
+	}
+
+	if in1.Sequence != 0xffffffee {
+		t.Fatalf("inputs[0] sequence got %d", in1.Sequence)
+	}
+
+	if in1.ScriptWitness.Size() != 0 {
+		t.Fatalf("inputs[0] witness got %d", in1.ScriptWitness.Size())
+	}
+
+	in2 := tx.Inputs[1]
+	if in2.PrevOutput.Hash.String() != "ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a" {
+		t.Fatalf("inputs[1] prevoutpoint: got %s", in2.PrevOutput.Hash.String())
+	}
+
+	if in2.PrevOutput.Index != 1 {
+		t.Fatalf("inputs[1] index: got %d", in1.PrevOutput.Index)
+	}
+
+	if hex.EncodeToString(in2.ScriptSig) != "" {
+		t.Fatalf("inputs[1] hex: got %x", in2.ScriptSig)
+	}
+
+	if in2.Sequence != 0xffffffff {
+		t.Fatalf("inputs[1] sequence got %d", in2.Sequence)
+	}
+
+	if in2.ScriptWitness.Size() != 2 {
+		t.Fatalf("inputs[1] witness got %d", in2.ScriptWitness.Size())
+	}
+
+	b1, _ := hex.DecodeString("304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee01")
+	b2, _ := hex.DecodeString("025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357")
+
+	if !in2.ScriptWitness.Equal(NewScriptWitness([][]byte{
+		b1, b2,
+	})) {
+		t.Fatalf("inputs[2] witness got %x", in2.ScriptWitness.Bytes())
+	}
 }

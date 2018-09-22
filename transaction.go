@@ -1,6 +1,7 @@
 package bcore
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"math"
@@ -9,6 +10,8 @@ import (
 var (
 	ErrTransactionInputWrongSize         = errors.New("transaction input:  wrong size")
 	ErrTransactionInputOutPointWrongSize = errors.New("transaction outpoint: wrong size")
+	ErrTransactionNoWitnessMarker        = errors.New("transaction: no witness marker")
+	ErrTransactionNoWitnessFlag          = errors.New("transaction: no witness flag")
 )
 
 const (
@@ -45,8 +48,41 @@ type TransactionOutput struct {
 
 type ScriptWitness [][]byte
 
-func NewScriptWitness() ScriptWitness {
-	return ScriptWitness([][]byte{})
+func NewScriptWitness(b [][]byte) ScriptWitness {
+	witness := ScriptWitness(b)
+	return witness
+}
+
+func NewScriptWitnessFromBuffer(buffer *Buffer) (ScriptWitness, error) {
+	n, err := buffer.GetVarInt()
+	if err != nil {
+		return nil, err
+	}
+
+	witness := make([][]byte, n)
+	for i := 0; i < int(n); i++ {
+		b, err := buffer.GetVarBytes()
+		if err != nil {
+			return nil, err
+		}
+		witness[i] = b
+	}
+
+	return NewScriptWitness(witness), nil
+}
+
+func (s ScriptWitness) Equal(t ScriptWitness) bool {
+	if s.Size() != t.Size() {
+		return false
+	}
+
+	for i, _ := range s {
+		if !bytes.Equal(s[i], t[i]) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (s ScriptWitness) Size() int { return len(s) }
@@ -119,7 +155,7 @@ func NewTransactionInputFromBuffer(buffer *Buffer) (*TransactionInput, error) {
 		PrevOutput:    outpoint,
 		ScriptSig:     scriptSig,
 		Sequence:      sequence,
-		ScriptWitness: NewScriptWitness(),
+		ScriptWitness: NewScriptWitness([][]byte{}),
 	}, nil
 }
 
@@ -177,6 +213,15 @@ func NewTransactionFromHexString(hexstring string) (*Transaction, error) {
 	return NewTransactionFromBytes(b)
 }
 
+func NewTransactionWitnessFromHexString(hexstring string) (*Transaction, error) {
+	b, err := hex.DecodeString(hexstring)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewTransactionWitnessFromBytes(b)
+}
+
 func NewTransactionFromBytes(data []byte) (*Transaction, error) {
 	buffer := NewReadBuffer(data)
 
@@ -211,6 +256,82 @@ func NewTransactionFromBytes(data []byte) (*Transaction, error) {
 			return nil, err
 		}
 		outputs[i] = output
+	}
+
+	locktime, err := buffer.GetUint32()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Transaction{
+		Version:  version,
+		Inputs:   inputs,
+		Outputs:  outputs,
+		Locktime: locktime,
+	}, nil
+}
+
+func NewTransactionWitnessFromBytes(data []byte) (*Transaction, error) {
+	buffer := NewReadBuffer(data)
+
+	version, err := buffer.GetUint32()
+	if err != nil {
+		return nil, err
+	}
+
+	// [nVersion][marker][flag][txins][txouts][witness][nLockTime]
+	marker, err := buffer.GetUint8()
+	if err != nil {
+		return nil, err
+	}
+
+	if marker != TransactionWitnessMarker {
+		return nil, ErrTransactionNoWitnessMarker
+	}
+
+	flag, err := buffer.GetUint8()
+	if err != nil {
+		return nil, err
+	}
+
+	if flag != TransactionWitnessFlag {
+		return nil, ErrTransactionNoWitnessFlag
+	}
+
+	ninputs, err := buffer.GetVarInt()
+	if err != nil {
+		return nil, err
+	}
+
+	inputs := make([]*TransactionInput, ninputs)
+	for i := 0; i < int(ninputs); i++ {
+		input, err := NewTransactionInputFromBuffer(buffer)
+		if err != nil {
+			return nil, err
+		}
+		inputs[i] = input
+	}
+
+	noutputs, err := buffer.GetVarInt()
+	if err != nil {
+		return nil, err
+	}
+
+	outputs := make([]*TransactionOutput, noutputs)
+	for i := 0; i < int(noutputs); i++ {
+		output, err := NewTransactionOutputFromBuffer(buffer)
+		if err != nil {
+			return nil, err
+		}
+		outputs[i] = output
+	}
+
+	for i := 0; i < int(ninputs); i++ {
+		witness, err := NewScriptWitnessFromBuffer(buffer)
+		if err != nil {
+			return nil, err
+		}
+		inputs[i].ScriptWitness = witness
 	}
 
 	locktime, err := buffer.GetUint32()
