@@ -291,7 +291,6 @@ func NewTransactionWitnessFromBytes(data []byte) (*Transaction, error) {
 		return nil, err
 	}
 
-	// [nVersion][marker][flag][txins][txouts][witness][nLockTime]
 	marker, err := buffer.GetUint8()
 	if err != nil {
 		return nil, err

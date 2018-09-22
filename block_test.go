@@ -34,4 +34,8 @@ func TestNewBlock(t *testing.T) {
 	if b.Header.Nonce != 1462756097 {
 		t.Fatalf("block header nonce: got %d", b.Header.Nonce)
 	}
+
+	if len(b.Transactions) != 2 {
+		t.Fatalf("block transactions: got %d", len(b.Transactions))
+	}
 }
