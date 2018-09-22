@@ -23,26 +23,36 @@ const (
 )
 
 type Transaction struct {
-	Version  uint32
-	Inputs   []*TransactionInput
-	Outputs  []*TransactionOutput
+	// Transaction version number; currently version 1.
+	// Programs creating transactions using newer consensus rules may use higher version numbers.
+	Version uint32
+	Inputs  []*TransactionInput
+	Outputs []*TransactionOutput
+	// A time (Unix epoch time) or block number. See the locktime parsing rules.
 	Locktime uint32
 }
 
 type OutPoint struct {
-	Hash  Hash
+	// The TXID of the transaction holding the output to spend. The TXID is a hash provided here in internal byte order.
+	Hash Hash
+	// The output index number of the specific output to spend from the transaction. The first output is 0x00000000.
 	Index uint32
 }
 
 type TransactionInput struct {
-	PrevOutput    *OutPoint
-	ScriptSig     []byte
+	// The previous outpoint being spent
+	PrevOutput *OutPoint
+	// A script-language script which satisfies the conditions placed in the outpoint’s pubkey script. Should only contain data pushes
+	ScriptSig []byte
+	// Sequence number. Default for Bitcoin Core and almost all other programs is 0xffffffff.
 	Sequence      uint32
 	ScriptWitness ScriptWitness
 }
 
 type TransactionOutput struct {
-	Value        uint64
+	// Number of satoshis to spend. May be zero; the sum of all outputs may not exceed the sum of satoshis previously spent to the outpoints provided in the input section
+	Value uint64
+	// Defines the conditions which must be satisfied to spend this output.
 	ScriptPubkey []byte
 }
 
@@ -223,8 +233,10 @@ func NewTransactionWitnessFromHexString(hexstring string) (*Transaction, error) 
 }
 
 func NewTransactionFromBytes(data []byte) (*Transaction, error) {
-	buffer := NewReadBuffer(data)
+	return NewTransactionFromBuffer(NewReadBuffer(data))
+}
 
+func NewTransactionFromBuffer(buffer *Buffer) (*Transaction, error) {
 	version, err := buffer.GetUint32()
 	if err != nil {
 		return nil, err
@@ -429,6 +441,10 @@ func (t *Transaction) BytesWithWitness() []byte {
 	buffer.PutUint32(t.Locktime)
 
 	return buffer.Bytes()
+}
+
+func (t *Transaction) WitnessHash() Hash {
+	return DHash256(t.BytesWithWitness())
 }
 
 func (t *Transaction) Hash() Hash {

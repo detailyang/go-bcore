@@ -4,6 +4,10 @@ import (
 	"math/big"
 )
 
+const (
+	CompactSize = 4
+)
+
 type Compact uint32
 
 func NewCompact(u32 uint32) Compact {

@@ -90,6 +90,19 @@ func (b *Buffer) PutCompact(c Compact) *Buffer {
 	return b
 }
 
+func (b *Buffer) GetCompact() (Compact, error) {
+	if !b.HasSize(CompactSize) {
+		return 0, ErrBufferOverflow
+	}
+
+	var c Compact
+	u32 := binary.LittleEndian.Uint32(b.data[b.pos:])
+	b.pos += 4
+	c.SetUint32(u32)
+
+	return c, nil
+}
+
 func (b *Buffer) Compact(c *Compact) *Buffer {
 	u32 := binary.LittleEndian.Uint32(b.data[b.pos:])
 	b.pos += 4
@@ -147,6 +160,19 @@ func (b *Buffer) PutHash(hash Hash) *Buffer {
 	b.data = append(b.data, hash.Bytes()...)
 	b.pos += len(hash)
 	return b
+}
+
+func (b *Buffer) GetHash() (Hash, error) {
+	if !b.HasSize(HashSize) {
+		return HashZero, ErrBufferOverflow
+	}
+
+	var hash Hash
+	data := b.data[b.pos : b.pos+HashSize]
+	hash.SetBytes(data)
+	b.pos += HashSize
+
+	return hash, nil
 }
 
 func (b *Buffer) Hash(hash *Hash) *Buffer {
