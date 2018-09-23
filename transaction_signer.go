@@ -21,6 +21,7 @@ package bcore
 import (
 	"errors"
 
+	secp256k1 "github.com/detailyang/go-bcrypto/secp256k1"
 	bscript "github.com/detailyang/go-bscript"
 )
 
@@ -64,6 +65,7 @@ var (
 	ErrTransactionSignerSequenceThresold      = errors.New("transaction signer: sequence < threshold")
 	ErrTransactionSignerSequenceNotArrived    = errors.New("transaction signer: tosequnce < sequence")
 	ErrTransactionSignerEmptySignature        = errors.New("transaction signer: zero signature")
+	ErrTransactionSignerVerifySignatureFailed = errors.New("transaction signer: verify signature failed")
 )
 
 type TransactionSigner struct {
@@ -310,7 +312,10 @@ func (ts *TransactionSigner) CheckSignature(sig, pubkey []byte, script *bscript.
 		hash = ts.signatureHashForkId(sig, script, hashtype)
 	}
 
-	pubkey.Ver
+	ok := secp256k1.VerifySignature(pubkey, hash.Bytes(), sig)
+	if !ok {
+		return ErrTransactionSignerVerifySignatureFailed
+	}
 
 	return nil
 }
