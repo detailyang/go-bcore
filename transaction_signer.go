@@ -27,13 +27,19 @@ import (
 
 const (
 	// the default, signs all the inputs and outputs, protecting everything except the signature scripts against modification.
-	SigHashAll = 1
+	SigHashAll int32 = 1
 	// signs all of the inputs but none of the outputs, allowing anyone to change where the satoshis are going unless other signatures using other signature hash flags protect the outputs
-	SigHashNone = 2
+	SigHashNone int32 = 2
 	// the only output signed is the one corresponding to this input (the output with the same output index number as this input), ensuring nobody can change your part of the transaction but allowing other signers to change their part of the transaction. The corresponding output must exist or the value “1” will be signed, breaking the security scheme. This input, as well as other inputs, are included in the signature. The sequence numbers of other inputs are not included in the signature, and can be updated.
-	SigHashSingle       = 3
-	SigHashForkId       = 0x40
-	SigHashAnyoneCanPay = 0x80
+	SigHashSingle       int32 = 3
+	SigHashForkId       int32 = 0x40
+	SigHashAnyoneCanPay int32 = 0x80
+)
+
+const (
+	SignatureVersionBase = 1 << iota
+	SignatureVersionWitnessV0
+	SignatureVersionForkId
 )
 
 const (
@@ -72,6 +78,14 @@ type TransactionSigner struct {
 	Transaction *Transaction
 	InputIndex  int
 	InputValue  uint64
+}
+
+func NewTransactionSigner(tx *Transaction, InputIndex int, InputValue uint64) *TransactionSigner {
+	return &TransactionSigner{
+		Transaction: tx,
+		InputIndex:  InputIndex,
+		InputValue:  InputValue,
+	}
 }
 
 func (ts *TransactionSigner) CheckLockTime(locktime uint32) error {
@@ -136,7 +150,7 @@ func (ts *TransactionSigner) CheckSequence(sequence uint32) error {
 	return nil
 }
 
-func (ts *TransactionSigner) computeHashPrevOuts(hashtype uint32) Hash {
+func (ts *TransactionSigner) computeHashPrevOuts(hashtype int32) Hash {
 	if hashtype&SigHashAnyoneCanPay == SigHashAnyoneCanPay {
 		buffer := NewBuffer()
 		for _, input := range ts.Transaction.Inputs {
@@ -149,7 +163,7 @@ func (ts *TransactionSigner) computeHashPrevOuts(hashtype uint32) Hash {
 	return HashZero
 }
 
-func (ts *TransactionSigner) computeHashSequence(hashtype uint32) Hash {
+func (ts *TransactionSigner) computeHashSequence(hashtype int32) Hash {
 	if hashtype&SigHashAll == SigHashAll && hashtype&SigHashAnyoneCanPay != SigHashAnyoneCanPay {
 		buffer := NewBuffer()
 		for _, input := range ts.Transaction.Inputs {
@@ -162,7 +176,7 @@ func (ts *TransactionSigner) computeHashSequence(hashtype uint32) Hash {
 	return HashZero
 }
 
-func (ts *TransactionSigner) computeHashOutputs(hashtype uint32) Hash {
+func (ts *TransactionSigner) computeHashOutputs(hashtype int32) Hash {
 	if hashtype&SigHashAll == SigHashAll {
 		buffer := NewBuffer()
 		for _, output := range ts.Transaction.Outputs {
@@ -190,7 +204,7 @@ func (ts *TransactionSigner) computeHashOutputs(hashtype uint32) Hash {
 // 8. hashOutputs (32-byte hash)
 // 9. nLocktime of the transaction (4-byte little endian)
 // 10. sighash type of the signature (4-byte little endian)
-func (ts *TransactionSigner) signatureHashWitnessV0(sig []byte, script *bscript.Script, hashtype uint32) Hash {
+func (ts *TransactionSigner) signatureHashWitnessV0(script *bscript.Script, hashtype int32) Hash {
 	hashPrevouts := ts.computeHashPrevOuts(hashtype)
 	hashSequence := ts.computeHashSequence(hashtype)
 	hashOutputs := ts.computeHashOutputs(hashtype)
@@ -207,24 +221,24 @@ func (ts *TransactionSigner) signatureHashWitnessV0(sig []byte, script *bscript.
 		PutUint8(uint8(hashtype)).Bytes())
 }
 
-func (ts *TransactionSigner) signatureHashForkId(sig []byte, script *bscript.Script, hashtype uint32) Hash {
+func (ts *TransactionSigner) signatureHashForkId(script *bscript.Script, hashtype int32) Hash {
 	if ts.InputIndex >= len(ts.Transaction.Inputs) {
 		return HashOne
 	}
 
-	if hashtype&SigHashSingle == SigHashSingle {
+	if hashtype&0x1f == SigHashSingle {
 		return HashOne
 	}
 
-	return ts.signatureHashWitnessV0(sig, script, hashtype)
+	return ts.signatureHashWitnessV0(script, hashtype)
 }
 
-func (ts *TransactionSigner) signatureHashOriginal(sig []byte, script *bscript.Script, hashtype uint32) Hash {
+func (ts *TransactionSigner) signatureHashOriginal(script *bscript.Script, hashtype int32) Hash {
 	if ts.InputIndex >= len(ts.Transaction.Inputs) {
 		return HashOne
 	}
 
-	if (hashtype&SigHashSingle == SigHashSingle) && ts.InputIndex >= len(ts.Transaction.Outputs) {
+	if (hashtype&0x1F == SigHashSingle) && ts.InputIndex >= len(ts.Transaction.Outputs) {
 		return HashOne
 	}
 
@@ -251,8 +265,8 @@ func (ts *TransactionSigner) signatureHashOriginal(sig []byte, script *bscript.S
 			}
 
 			sequence := input.Sequence
-			if i != ts.InputIndex && ((hashtype&SigHashSingle == SigHashSingle) ||
-				(hashtype&SigHashNone == SigHashNone)) {
+			if i != ts.InputIndex && ((hashtype&0x1F == SigHashSingle) ||
+				(hashtype&0x1F == SigHashNone)) {
 				sequence = 0
 			}
 
@@ -266,19 +280,22 @@ func (ts *TransactionSigner) signatureHashOriginal(sig []byte, script *bscript.S
 
 	var outputs []*TransactionOutput
 
-	if hashtype&SigHashAll == SigHashAll {
+	switch hashtype & 0x1f {
+	case SigHashNone:
+	case SigHashSingle:
+		outputs = make([]*TransactionOutput, 0, len(ts.Transaction.Outputs))
+		for i := 0; i < ts.InputIndex+1; i++ {
+			output := ts.Transaction.Outputs[i]
+			if i == ts.InputIndex {
+				outputs = append(outputs, output.Clone())
+			} else {
+				outputs = append(outputs, NewDefaultTransactionOutput())
+			}
+		}
+	default:
 		outputs = make([]*TransactionOutput, len(ts.Transaction.Outputs))
 		for i, output := range ts.Transaction.Outputs {
 			outputs[i] = output.Clone()
-		}
-	} else {
-		outputs = make([]*TransactionOutput, len(ts.Transaction.Outputs))
-		for i, output := range ts.Transaction.Outputs {
-			if i == ts.InputIndex+1 {
-				outputs[i] = output.Clone()
-			} else {
-				outputs[i] = NewDefaultTransactionOutput()
-			}
 		}
 	}
 
@@ -289,8 +306,7 @@ func (ts *TransactionSigner) signatureHashOriginal(sig []byte, script *bscript.S
 		Locktime: ts.Transaction.Locktime,
 	}
 
-	hash := tx.Bytes()
-	return DHash256(append(hash, byte(hashtype)))
+	return DHash256(append(tx.Bytes(), byte(hashtype), byte(hashtype>>8), byte(hashtype>>16), byte(hashtype>>24)))
 }
 
 func (ts *TransactionSigner) CheckSignature(sig, pubkey []byte, script *bscript.Script, version bscript.SignatureVersion) error {
@@ -298,18 +314,18 @@ func (ts *TransactionSigner) CheckSignature(sig, pubkey []byte, script *bscript.
 		return ErrTransactionSignerEmptySignature
 	}
 
-	hashtype := uint32(sig[len(sig)-1])
+	hashtype := int32(sig[len(sig)-1])
 	sig = sig[:len(sig)-1]
 
 	var hash Hash
 
 	switch version {
 	case SignatureVersionBase:
-		hash = ts.signatureHashOriginal(sig, script, hashtype)
+		hash = ts.signatureHashOriginal(script, hashtype)
 	case SignatureVersionWitnessV0:
-		hash = ts.signatureHashWitnessV0(sig, script, hashtype)
+		hash = ts.signatureHashWitnessV0(script, hashtype)
 	case SignatureVersionForkId:
-		hash = ts.signatureHashForkId(sig, script, hashtype)
+		hash = ts.signatureHashForkId(script, hashtype)
 	}
 
 	ok := secp256k1.VerifySignature(pubkey, hash.Bytes(), sig)
@@ -318,45 +334,4 @@ func (ts *TransactionSigner) CheckSignature(sig, pubkey []byte, script *bscript.
 	}
 
 	return nil
-}
-
-type SigHash struct {
-	Base         uint32
-	AnyoneCanPay bool
-	ForkId       bool
-}
-
-const (
-	SignatureVersionBase = 1 << iota
-	SignatureVersionWitnessV0
-	SignatureVersionForkId
-)
-
-func NewSigHash(base uint32, anyoneCanPay, forkId bool) SigHash {
-	return SigHash{
-		Base:         base,
-		AnyoneCanPay: anyoneCanPay,
-		ForkId:       forkId,
-	}
-}
-
-func NewSigHashFromU32(version uint32, u32 uint32) SigHash {
-	anyoneCanPay := (u32 & SigHashAnyoneCanPay) == SigHashAnyoneCanPay
-	forkId := version == SignatureVersionForkId && (u32&SigHashForkId == SigHashForkId)
-
-	var base uint32
-	switch u32 & 0x1F {
-	case 3:
-		base = SigHashSingle
-	case 2:
-		base = SigHashNone
-	default:
-		base = SigHashAll
-	}
-
-	return SigHash{
-		Base:         base,
-		AnyoneCanPay: anyoneCanPay,
-		ForkId:       forkId,
-	}
 }

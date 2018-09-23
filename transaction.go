@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrTransactionInputWrongSize         = errors.New("transaction input:  wrong size")
+	ErrTransactionInputWrongSize         = errors.New("transaction input: wrong size")
 	ErrTransactionInputOutPointWrongSize = errors.New("transaction outpoint: wrong size")
 	ErrTransactionNoWitnessMarker        = errors.New("transaction: no witness marker")
 	ErrTransactionNoWitnessFlag          = errors.New("transaction: no witness flag")
