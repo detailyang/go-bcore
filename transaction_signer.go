@@ -218,7 +218,7 @@ func (ts *TransactionSigner) signatureHashWitnessV0(script *bscript.Script, hash
 		PutUint32(ts.Transaction.Inputs[ts.InputIndex].Sequence).
 		PutHash(hashOutputs).
 		PutUint32(ts.Transaction.Locktime).
-		PutUint8(uint8(hashtype)).Bytes())
+		PutUint32(uint32(hashtype)).Bytes())
 }
 
 func (ts *TransactionSigner) signatureHashForkId(script *bscript.Script, hashtype int32) Hash {
