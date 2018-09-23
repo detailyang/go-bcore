@@ -129,6 +129,13 @@ func NewOutPointFromBytes(data []byte) (*OutPoint, error) {
 	return &op, nil
 }
 
+func (o OutPoint) Clone() *OutPoint {
+	return &OutPoint{
+		Hash:  o.Hash.Clone(),
+		Index: o.Index,
+	}
+}
+
 func (o OutPoint) IsNull() bool {
 	return o.Hash.IsZero()
 }
@@ -190,6 +197,13 @@ func (ti *TransactionInput) Bytes() []byte {
 		Bytes()
 }
 
+func NewDefaultTransactionOutput() *TransactionOutput {
+	return &TransactionOutput{
+		Value:        0xffffffffffffffff,
+		ScriptPubkey: []byte{},
+	}
+}
+
 func NewTransactionOutputFromBuffer(buffer *Buffer) (*TransactionOutput, error) {
 	value, err := buffer.GetUint64()
 	if err != nil {
@@ -205,6 +219,16 @@ func NewTransactionOutputFromBuffer(buffer *Buffer) (*TransactionOutput, error) 
 		Value:        value,
 		ScriptPubkey: scriptPubkey,
 	}, nil
+}
+
+func (to *TransactionOutput) Clone() *TransactionOutput {
+	scriptPubkey := make([]byte, len(to.ScriptPubkey))
+	copy(scriptPubkey, to.ScriptPubkey)
+
+	return &TransactionOutput{
+		Value:        to.Value,
+		ScriptPubkey: scriptPubkey,
+	}
 }
 
 func (to *TransactionOutput) Bytes() []byte {

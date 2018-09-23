@@ -10,6 +10,7 @@ const HashSize = 32
 
 var (
 	HashZero = Hash{0x00}
+	HashOne  = Hash{0x01}
 )
 
 type Hash [HashSize]byte
@@ -34,6 +35,12 @@ func (h Hash) Equal(target Hash) bool {
 
 func (h Hash) IsZero() bool {
 	return h.Equal(HashZero)
+}
+
+func (h Hash) Clone() Hash {
+	var nh Hash
+	nh.SetBytes(h.Bytes())
+	return nh
 }
 
 func (h Hash) Bytes() []byte {
