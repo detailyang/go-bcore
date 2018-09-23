@@ -22,6 +22,7 @@ import (
 	"errors"
 
 	secp256k1 "github.com/detailyang/go-bcrypto/secp256k1"
+	. "github.com/detailyang/go-bprimitives"
 	bscript "github.com/detailyang/go-bscript"
 )
 

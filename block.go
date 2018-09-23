@@ -1,6 +1,10 @@
 package bcore
 
-import "encoding/hex"
+import (
+	"encoding/hex"
+
+	. "github.com/detailyang/go-bprimitives"
+)
 
 // Block represents bitcoin block header and transactions
 type Block struct {

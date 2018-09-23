@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+
+	. "github.com/detailyang/go-bprimitives"
 )
 
 var (

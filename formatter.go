@@ -3,6 +3,8 @@ package bcore
 import (
 	"fmt"
 	"strings"
+
+	. "github.com/detailyang/go-bprimitives"
 )
 
 type Formatter struct {

@@ -3,6 +3,8 @@ package bcore
 import (
 	"bytes"
 	"testing"
+
+	. "github.com/detailyang/go-bprimitives"
 )
 
 func TestBlockHeaderFromBytes(t *testing.T) {
