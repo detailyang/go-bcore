@@ -522,7 +522,7 @@ func TestTransactionSignerHash(t *testing.T) {
 		}
 
 		ts := NewTransactionSigner(tx, test.inputIndex, 0)
-		script, err := bscript.NewSCriptFromHexString(test.script)
+		script, err := bscript.NewScriptFromHexString(test.script)
 		if err != nil {
 			t.Fatal(err)
 		}

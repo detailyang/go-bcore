@@ -21,9 +21,9 @@ package bcore
 import (
 	"errors"
 
-	secp256k1 "github.com/detailyang/go-bcrypto/secp256k1"
+	"github.com/detailyang/go-bcrypto"
 	. "github.com/detailyang/go-bprimitives"
-	bscript "github.com/detailyang/go-bscript"
+	"github.com/detailyang/go-bscript"
 )
 
 const (
@@ -329,7 +329,17 @@ func (ts *TransactionSigner) CheckSignature(sig, pubkey []byte, script *bscript.
 		hash = ts.signatureHashForkId(script, hashtype)
 	}
 
-	ok := secp256k1.VerifySignature(pubkey, hash.Bytes(), sig)
+	pk, err := bcrypto.NewPubkeyFromBytes(pubkey)
+	if err != nil {
+		return err
+	}
+
+	signature, err := bcrypto.NewSignatureFromBytes(sig)
+	if err != nil {
+		return err
+	}
+
+	ok := signature.Verify(hash.Bytes(), pk)
 	if !ok {
 		return ErrTransactionSignerVerifySignatureFailed
 	}
