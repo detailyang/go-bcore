@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"math"
+	"fmt"
 
 	. "github.com/detailyang/go-bprimitives"
 )
@@ -110,10 +110,10 @@ func (s ScriptWitness) Bytes() []byte {
 	return buffer.Bytes()
 }
 
-func NewOutPoint() *OutPoint {
+func NewOutPoint(hash Hash, index uint32) *OutPoint {
 	return &OutPoint{
-		Hash:  HashZero,
-		Index: math.MaxUint32,
+		Hash:  hash,
+		Index: index,
 	}
 }
 
@@ -191,6 +191,14 @@ func (ti *TransactionInput) HasWitness() bool {
 	return false
 }
 
+func (ti *TransactionInput) String() string {
+	return NewFormatter("\n", 16).
+		PutField("\tprevout.TXID", ti.PrevOutput.Hash).
+		PutField("\tprevout.Index", ti.PrevOutput.Index).
+		PutField("\tscriptSig", hex.EncodeToString(ti.ScriptSig)).
+		PutField("\tsequence", ti.Sequence).String()
+}
+
 func (ti *TransactionInput) Bytes() []byte {
 	return NewBuffer().
 		PutBytes(ti.PrevOutput.Bytes()).
@@ -238,6 +246,12 @@ func (to *TransactionOutput) Bytes() []byte {
 		PutUint64(to.Value).
 		PutVarBytes(to.ScriptPubkey).
 		Bytes()
+}
+
+func (to *TransactionOutput) String() string {
+	return NewFormatter("\n", 16).
+		PutField("\tscriptPubkey", hex.EncodeToString(to.ScriptPubkey)).
+		PutField("\tvalue", to.Value).String()
 }
 
 func NewTransactionFromHexString(hexstring string) (*Transaction, error) {
@@ -468,8 +482,30 @@ func (t *Transaction) BytesWithWitness() []byte {
 	return buffer.Bytes()
 }
 
+func (t *Transaction) String() string {
+	inputs := make([]fmt.Stringer, len(t.Inputs))
+	for i, s := range t.Inputs {
+		inputs[i] = s
+	}
+
+	outputs := make([]fmt.Stringer, len(t.Outputs))
+	for i, s := range t.Outputs {
+		outputs[i] = s
+	}
+
+	return NewFormatter("\n", 9).PutField(
+		"version", t.Version).
+		PutListField("input", inputs).
+		PutListField("output", outputs).
+		PutField("locktime", t.Locktime).String()
+}
+
 func (t *Transaction) WitnessHash() Hash {
 	return DHash256(t.BytesWithWitness())
+}
+
+func (t *Transaction) ID() Hash {
+	return t.Hash()
 }
 
 func (t *Transaction) Hash() Hash {

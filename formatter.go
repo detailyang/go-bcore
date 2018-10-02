@@ -21,16 +21,30 @@ func (f *Formatter) PutField(field string, value interface{}) *Formatter {
 	var text string
 
 	switch value.(type) {
+	case uint64:
+		text = fmt.Sprintf("%-*s:%d", f.width, field, value)
 	case uint32:
 		text = fmt.Sprintf("%-*s:%d", f.width, field, value)
 	case Hash:
 		text = fmt.Sprintf("%-*s:%s", f.width, field, value)
 	case Compact:
 		text = fmt.Sprintf("%-*s:%d", f.width, field, value)
+	case string:
+		text = fmt.Sprintf("%-*s:%s", f.width, field, value)
 	default:
 		panic("don't implement ")
 	}
 	f.s = append(f.s, text)
+
+	return f
+}
+
+func (f *Formatter) PutListField(field string, value []fmt.Stringer) *Formatter {
+	for i, s := range value {
+		label := fmt.Sprintf("%s[%d]", field, i)
+		text := fmt.Sprintf("%-*s:\n%s", f.width, label, s.String())
+		f.s = append(f.s, text)
+	}
 
 	return f
 }
