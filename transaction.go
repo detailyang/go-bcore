@@ -17,9 +17,10 @@ var (
 )
 
 const (
-	TransactionFinalSequence = 0xffffffff
-	TransactionWitnessMarker = 0x00
-	TransactionWitnessFlag   = 0x01
+	TransactionFinalSequence   = 0xffffffff
+	TransactionOutPointDefault = 0xffffffff
+	TransactionWitnessMarker   = 0x00
+	TransactionWitnessFlag     = 0x01
 
 	TransactionOutPointSize = HashSize + 4
 )
@@ -42,7 +43,7 @@ type OutPoint struct {
 }
 
 type TransactionInput struct {
-	// The previous outpoint being spent
+	// The previous outpoint being spet
 	PrevOutput *OutPoint
 	// A script-language script which satisfies the conditions placed in the outpoint’s pubkey script. Should only contain data pushes
 	ScriptSig []byte
@@ -108,6 +109,13 @@ func (s ScriptWitness) Bytes() []byte {
 	}
 
 	return buffer.Bytes()
+}
+
+func NewDefaultOutPoint() *OutPoint {
+	return &OutPoint{
+		Hash:  HashZero,
+		Index: TransactionOutPointDefault,
+	}
 }
 
 func NewOutPoint(hash Hash, index uint32) *OutPoint {
@@ -493,8 +501,9 @@ func (t *Transaction) String() string {
 		outputs[i] = s
 	}
 
-	return NewFormatter("\n", 9).PutField(
-		"version", t.Version).
+	return NewFormatter("\n", 9).
+		PutField("txid", t.ID()).
+		PutField("version", t.Version).
 		PutListField("input", inputs).
 		PutListField("output", outputs).
 		PutField("locktime", t.Locktime).String()

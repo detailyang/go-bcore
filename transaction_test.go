@@ -57,7 +57,7 @@ func TestTransactionID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tx.ID().RString() != "46b690f548f6eb70dca7fb2020ff4be369c42f3ea2375fd3f6b34890b640f8e9" {
+	if tx.ID().String() != "46b690f548f6eb70dca7fb2020ff4be369c42f3ea2375fd3f6b34890b640f8e9" {
 		t.Fatal("expect 46b690f548f6eb70dca7fb2020ff4be369c42f3ea2375fd3f6b34890b640f8e9")
 	}
 }
@@ -69,7 +69,7 @@ func TestTransactionHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if tx.Hash().RString() != "5a4ebf66822b0b2d56bd9dc64ece0bc38ee7844a23ff1d7320a88c5fdb2ad3e2" {
+	if tx.Hash().String() != "5a4ebf66822b0b2d56bd9dc64ece0bc38ee7844a23ff1d7320a88c5fdb2ad3e2" {
 		t.Fatal("tx rstring: got 5a4ebf66822b0b2d56bd9dc64ece0bc38ee7844a23ff1d7320a88c5fdb2ad3e2")
 	}
 }
